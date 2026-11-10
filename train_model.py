@@ -1,4 +1,15 @@
 import pandas as pd
+import joblib
+from sklearn.model_selection import train_test_split
+from sklearn.compose import ColumnTransformer
+from sklearn.impute import SimpleImputer
+from sklearn.preprocessing import StandardScaler
+from sklearn.pipeline import Pipeline
+from sklearn.linear_model import LogisticRegression
+from sklearn.ensemble import RandomForestClassifier
+from sklearn.metrics import (accuracy_score, precision_score, recall_score,
+                             f1_score, roc_auc_score, confusion_matrix,
+                             classification_report)
 
 # Load the Pima Indians Diabetes dataset
 url = "https://raw.githubusercontent.com/jbrownlee/Datasets/master/pima-indians-diabetes.data.csv"
@@ -10,9 +21,6 @@ df = pd.read_csv(url, header=None, names=cols)
 print(df.shape)
 print(df.head())
 print(df["Outcome"].value_counts())
-
-
-from sklearn.model_selection import train_test_split
 
 # --- Check for hidden missing values ---
 zero_cols = ["Glucose", "BloodPressure", "SkinThickness", "Insulin", "BMI"]
@@ -29,13 +37,6 @@ X_train, X_test, y_train, y_test = train_test_split(
 )
 print("\nTraining set:", X_train.shape)
 print("Test set:", X_test.shape)
-
-from sklearn.compose import ColumnTransformer
-from sklearn.impute import SimpleImputer
-from sklearn.preprocessing import StandardScaler
-from sklearn.pipeline import Pipeline
-from sklearn.linear_model import LogisticRegression
-from sklearn.ensemble import RandomForestClassifier
 
 # Columns where 0 is a real value, so we leave them as they are
 other_cols = ["Pregnancies", "DiabetesPedigreeFunction", "Age"]
@@ -61,9 +62,7 @@ model = Pipeline([
 print("\nPipeline built:")
 print(model)
 
-from sklearn.metrics import (accuracy_score, precision_score, recall_score,
-                             f1_score, roc_auc_score, confusion_matrix,
-                             classification_report)
+
 
 # --- Train the model on the training set only ---
 model.fit(X_train, y_train)
@@ -87,8 +86,6 @@ print("\n" + classification_report(y_test, y_pred,
                                     target_names=["No Diabetes", "Diabetes"]))
 
 
-
-import joblib
 
 # --- Save the trained pipeline ---
 joblib.dump(model, "classification_model.joblib")
