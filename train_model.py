@@ -1,5 +1,4 @@
 import pandas as pd
-import joblib
 from sklearn.model_selection import train_test_split
 from sklearn.compose import ColumnTransformer
 from sklearn.impute import SimpleImputer
@@ -10,6 +9,11 @@ from sklearn.ensemble import RandomForestClassifier
 from sklearn.metrics import (accuracy_score, precision_score, recall_score,
                              f1_score, roc_auc_score, confusion_matrix,
                              classification_report)
+import numpy as np
+from sklearn.model_selection import cross_val_predict
+import joblib
+
+
 
 # Load the Pima Indians Diabetes dataset
 url = "https://raw.githubusercontent.com/jbrownlee/Datasets/master/pima-indians-diabetes.data.csv"
@@ -21,6 +25,8 @@ df = pd.read_csv(url, header=None, names=cols)
 print(df.shape)
 print(df.head())
 print(df["Outcome"].value_counts())
+
+
 
 # --- Check for hidden missing values ---
 zero_cols = ["Glucose", "BloodPressure", "SkinThickness", "Insulin", "BMI"]
@@ -37,6 +43,7 @@ X_train, X_test, y_train, y_test = train_test_split(
 )
 print("\nTraining set:", X_train.shape)
 print("Test set:", X_test.shape)
+
 
 # Columns where 0 is a real value, so we leave them as they are
 other_cols = ["Pregnancies", "DiabetesPedigreeFunction", "Age"]
@@ -67,7 +74,7 @@ print(model)
 # --- Train the model on the training set only ---
 model.fit(X_train, y_train)
 
-# --- Predict on the test set (data the model has never seen) ---
+# --- Predict on the test set  ---
 y_pred = model.predict(X_test) 
 y_prob = model.predict_proba(X_test)[:, 1]
 
@@ -84,6 +91,39 @@ print(confusion_matrix(y_test, y_pred))
 
 print("\n" + classification_report(y_test, y_pred,
                                     target_names=["No Diabetes", "Diabetes"]))
+
+
+
+
+
+
+
+
+# --- Threshold comparison ---
+train_prob = cross_val_predict(model, X_train, y_train, cv=5,
+                               method="predict_proba")[:, 1]
+
+print("\n=== Threshold comparison (5-fold CV on training set) ===")
+print(f"{'Threshold':>9} {'Accuracy':>9} {'Precision':>10} {'Recall':>7} {'F1':>6}")
+for t in np.arange(0.30, 0.71, 0.05):
+    preds = (train_prob >= t).astype(int)
+    print(f"{t:9.2f} "
+          f"{accuracy_score(y_train, preds):9.3f} "
+          f"{precision_score(y_train, preds, zero_division=0):10.3f} "
+          f"{recall_score(y_train, preds):7.3f} "
+          f"{f1_score(y_train, preds):6.3f}")
+
+
+# --- Final evaluation on the test set with the chosen threshold ---
+THRESHOLD = 0.45
+y_pred_t = (y_prob >= THRESHOLD).astype(int)
+print(f"\n=== Test set at threshold {THRESHOLD} ===")
+print(f"Accuracy : {accuracy_score(y_test, y_pred_t):.3f}")
+print(f"Precision: {precision_score(y_test, y_pred_t):.3f}")
+print(f"Recall   : {recall_score(y_test, y_pred_t):.3f}")
+print(f"F1-score : {f1_score(y_test, y_pred_t):.3f}")
+print("Confusion matrix [[TN FP] [FN TP]]:")
+print(confusion_matrix(y_test, y_pred_t))
 
 
 
