@@ -2,7 +2,7 @@
 
 Machine Learning Classification Application deployed using Streamlit Community Cloud.
 
-**Live app:** [https://your-app-name.streamlit.app](https://classificationproject-dhzpa7k3wyuevcswgcsuc7.streamlit.app/)
+**Live app:** https://classificationproject-dhzpa7k3wyuevcswgcsuc7.streamlit.app/
 
 ## Overview
 This app predicts whether a patient is likely to have diabetes from eight diagnostic
