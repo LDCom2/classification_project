@@ -12,7 +12,7 @@ def load_model():
 
 model = load_model()
 
-# --- Sidebar: about the model ---
+# --- Sidebar: about the model + threshold ---
 with st.sidebar:
     st.header("About the Model")
     st.markdown(
@@ -23,31 +23,42 @@ with st.sidebar:
     )
     st.subheader("Test Set Performance")
     c1, c2 = st.columns(2)
-    c1.metric("Accuracy", "74.0%")
+    c1.metric("Accuracy", "73.4%")
     c2.metric("ROC-AUC", "0.818")
-    c1.metric("Recall", "75.9%")
-    c2.metric("Precision", "60.3%")
+    c1.metric("Recall", "83.3%")
+    c2.metric("Precision", "58.4%")
     st.caption("Evaluated on 154 patients the model never saw during training.")
+
+    st.divider()
+    st.subheader("Decision Threshold")
+    threshold = st.slider(
+        "Predict 'Yes' when probability is at least:",
+        min_value=0.30, max_value=0.70, value=0.45, step=0.05,
+        help="Lower = catches more diabetic patients but more false alarms. "
+             "Higher = fewer false alarms but misses more cases. "
+             "0.45 was chosen using cross-validation.",
+    )
+    st.caption("Performance metrics above are for the default threshold of 0.45.")
 
 # --- Title and description ---
 st.title("🩺 Diabetes Risk Predictor")
 st.write(
     "This app uses a machine learning classification model trained on the "
-    "Pima Indians Diabetes dataset to estimate whether a patient is likely "
+    "Pima Indians Diabetes dataset to predict whether a patient is likely "
     "to have diabetes."
 )
 
 # --- Instructions ---
 with st.expander("How to use this app", expanded=True):
     st.markdown(
-        "1. Enter the patient's details in the form below.\n"
+        "1. Use the sliders below to enter the patient's details.\n"
         "2. If **Skin Thickness** or **Insulin** were not measured, leave them at **0**. "
-        "The model will fill in a typical value.\n"
-        "3. Click **Predict** to see the result."
+        "The model will estimate them.\n"
+        "3. Click **Predict** to get a **Yes / No** result.\n"
+        "4. Optional: adjust the **decision threshold** in the sidebar."
     )
 
-
-# --- User inputs ---
+# --- User inputs (slider limits match the ranges in the training data) ---
 with st.form("patient_form"):
     st.subheader("Patient Information")
     col1, col2 = st.columns(2)
@@ -76,19 +87,19 @@ with st.form("patient_form"):
 
 # --- Validate inputs, then predict ---
 if submitted:
-    errors = []
+    # Validation: block unrealistic combinations
     if pregnancies > age - 12:
-        errors.append(f"{pregnancies} pregnancies is not realistic for a {age}-year-old patient.")
-    if skin_thickness == 0 and insulin > 0:
-        st.info("Skin Thickness is 0, so the model will estimate it.")
+        st.error(f"{pregnancies} pregnancies is not realistic for a {age}-year-old patient. "
+                 "Please check the inputs.")
+        st.stop()
+
+    # Let the user know when values will be estimated
+    if skin_thickness == 0:
+        st.info("Skin Thickness is 0 (not measured), so the model will estimate it.")
     if insulin == 0:
         st.info("Insulin is 0 (not measured), so the model will estimate it.")
 
-    if errors:
-        for e in errors:
-            st.error(e)
-        st.stop()   # don't predict on invalid input
-
+    # Same column names as in training
     patient = pd.DataFrame([{
         "Pregnancies": pregnancies,
         "Glucose": glucose,
@@ -100,19 +111,22 @@ if submitted:
         "Age": age,
     }])
 
-    prediction = model.predict(patient)[0]
+    # Prediction using the chosen threshold
     probability = model.predict_proba(patient)[0][1]
+    prediction = "Yes" if probability >= threshold else "No"
 
     st.subheader("Result")
-    if prediction == 1:
-        st.error(f"**Diabetes likely**: estimated probability {probability:.0%}")
+    if prediction == "Yes":
+        st.error("## Diabetes: **Yes**")
     else:
-        st.success(f"**Diabetes unlikely**: estimated probability {probability:.0%}")
-    st.progress(float(probability), text=f"Probability of diabetes: {probability:.1%}")
+        st.success("## Diabetes: **No**")
+
+    st.write(f"Estimated probability of diabetes: **{probability:.1%}** "
+             f"(threshold: {threshold:.2f})")
+    st.progress(float(probability))
 
     with st.expander("Values sent to the model"):
         st.dataframe(patient, hide_index=True)
-
 
 # --- Disclaimer ---
 st.divider()
